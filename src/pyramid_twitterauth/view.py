@@ -442,6 +442,12 @@ def authenticate_callback_view(request, unpack=_unpack_callback):
                 user.profile.formatted_location = tp['location']
             except KeyError:
                 pass
+
+        if "profile_image_url" in twitter_account.profile.data_str: 
+            try:
+                user.profile.image = tp['profile_image_url']
+            except KeyError:
+                pass
         
         event = UserSignedUp(request, user, data=twitter_user)
         action = 'signup'
