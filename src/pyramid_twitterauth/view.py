@@ -24,6 +24,11 @@ from pyramid_simpleauth.model import User
 from .hooks import get_handler
 from .model import get_existing_twitter_account, TwitterAccount, TwitterProfile
 
+from outofview.model.user import Profile
+
+import json
+
+
 def forbidden_view(request):
     """Handle a user being denied access to a resource or view by redirecting
       to authenticate via Twitter.  See the ``pyramid_twitterauth.includeme``
@@ -414,10 +419,30 @@ def authenticate_callback_view(request, unpack=_unpack_callback):
         # ``twitter_account`` and generate a signup event.
         user = User()
         user.username = twitter_user.screen_name
+
+        # create user profile
+        user.profile = Profile()
+        user.profile.display_name = user.username
+
         twitter_account = TwitterAccount()
         twitter_account.twitter_id = twitter_user.id
         twitter_account.user = user
         twitter_account.profile = TwitterProfile.create_from_tweepy_user(twitter_user)
+
+        # grab bio and location for user profile
+        tp = json.loads(twitter_account.profile.data_str)
+        if "description" in twitter_account.profile.data_str:
+            try:
+                user.profile.bio = tp['description']
+            except KeyError:
+                pass
+        
+        if "location" in twitter_account.profile.data_str: 
+            try:
+                user.profile.formatted_location = tp['location']
+            except KeyError:
+                pass
+        
         event = UserSignedUp(request, user, data=twitter_user)
         action = 'signup'
     # Update the twitter_account with the latest data, save to the db and
