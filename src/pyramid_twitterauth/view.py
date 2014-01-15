@@ -418,19 +418,37 @@ def authenticate_callback_view(request, unpack=_unpack_callback):
     else: # Otherwise, this is a signup, so insert a new ``user`` with a
         # ``twitter_account`` and generate a signup event.
         user = User()
-        user.username = twitter_user.screen_name
+
+        # check and see if the username is taken
+        new_username = twitter_user.screen_name
+        counter = 0
+        while True:
+            existing_user = User.query.filter(User.username==new_username)
+            if existing_user.count() == 0:
+                user.username = new_username
+                break
+            # username exists, so add a counter to the end and try again
+            counter += 1
+            new_username = '%s-%s' % (new_username, counter)
 
         # create user profile
         user.profile = Profile()
-        user.profile.display_name = user.username
-
         twitter_account = TwitterAccount()
+        
+        twitter_account.profile = TwitterProfile.create_from_tweepy_user(twitter_user)
+        tp = json.loads(twitter_account.profile.data_str)
+
+        # set the display name
+        if "name" in twitter_account.profile.data_str:
+            try:
+                user.profile.display_name = tp['name']
+            except KeyError:
+                user.profile.display_name = user.username
+
         twitter_account.twitter_id = twitter_user.id
         twitter_account.user = user
-        twitter_account.profile = TwitterProfile.create_from_tweepy_user(twitter_user)
 
         # grab bio and location for user profile
-        tp = json.loads(twitter_account.profile.data_str)
         if "description" in twitter_account.profile.data_str:
             try:
                 user.profile.bio = tp['description']
