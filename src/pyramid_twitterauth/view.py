@@ -255,7 +255,6 @@ def _get_redirect_url(request, action, candidate_next, user=None):
           '/'
       
     """
-    
     # If we've been provided a valid next value, return that.
     if candidate_next:
         try:
@@ -370,7 +369,10 @@ def oauth_authenticate_view(request, do_redirect=_do_oauth_redirect):
     
     # If there's already an authenticated user, we don't need to authenticate.
     if request.is_authenticated:
-        return _get_redirect_url(request, 'login', request.params.get('next'))
+        try:
+            return HTTPFound(location=_get_redirect_url(request, 'login', request.params.get('next')))
+        except:
+            return HTTPFound(location='/')
     return do_redirect(request, True)
 
 def oauth_authorize_view(request, do_redirect=_do_oauth_redirect):
